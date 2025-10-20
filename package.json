@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --mode production",
     "preview": "vite preview",
-    "serve": "vite preview --port 3000"
+    "vercel-build": "vite build"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -16,5 +16,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^4.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
