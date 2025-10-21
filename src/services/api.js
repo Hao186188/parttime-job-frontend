@@ -3,6 +3,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 class ApiService {
   constructor() {
     this.token = localStorage.getItem('token');
+    this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
   }
 
   setToken(token) {
@@ -10,9 +11,16 @@ class ApiService {
     localStorage.setItem('token', token);
   }
 
+  setCurrentUser(user) {
+    this.currentUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(user));
+  }
+
   removeToken() {
     this.token = null;
+    this.currentUser = null;
     localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
   }
 
   async request(endpoint, options = {}) {
@@ -59,12 +67,19 @@ class ApiService {
     }
   }
 
-  // Auth methods
+  // ========== AUTH METHODS ==========
   async register(userData) {
-    return this.request('/auth/register', {
+    const result = await this.request('/auth/register', {
       method: 'POST',
       body: userData,
     });
+    
+    if (result.data && result.data.token) {
+      this.setToken(result.data.token);
+      this.setCurrentUser(result.data.user);
+    }
+    
+    return result;
   }
 
   async login(credentials) {
@@ -75,6 +90,7 @@ class ApiService {
     
     if (result.data && result.data.token) {
       this.setToken(result.data.token);
+      this.setCurrentUser(result.data.user);
     }
     
     return result;
@@ -84,7 +100,21 @@ class ApiService {
     return this.request('/auth/me');
   }
 
-  // Job methods
+  async updateProfile(profileData) {
+    return this.request('/users/profile', {
+      method: 'PUT',
+      body: profileData,
+    });
+  }
+
+  async changePassword(passwordData) {
+    return this.request('/auth/password', {
+      method: 'PUT',
+      body: passwordData,
+    });
+  }
+
+  // ========== JOB METHODS ==========
   async getJobs(params = {}) {
     const queryString = new URLSearchParams(params).toString();
     return this.request(`/jobs?${queryString}`);
@@ -98,7 +128,32 @@ class ApiService {
     return this.request('/jobs/featured');
   }
 
-  // Application methods
+  async getEmployerJobs(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/jobs/employer/my-jobs?${queryString}`);
+  }
+
+  async createJob(jobData) {
+    return this.request('/jobs', {
+      method: 'POST',
+      body: jobData,
+    });
+  }
+
+  async updateJob(id, jobData) {
+    return this.request(`/jobs/${id}`, {
+      method: 'PUT',
+      body: jobData,
+    });
+  }
+
+  async deleteJob(id) {
+    return this.request(`/jobs/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ========== APPLICATION METHODS ==========
   async applyForJob(applicationData) {
     return this.request('/applications', {
       method: 'POST',
@@ -106,16 +161,66 @@ class ApiService {
     });
   }
 
-  async getMyApplications() {
-    return this.request('/applications/student/my-applications');
+  async getMyApplications(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/applications/student/my-applications?${queryString}`);
   }
 
-  // User methods
-  async updateProfile(profileData) {
-    return this.request('/users/profile', {
+  async getEmployerApplications(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    return this.request(`/applications/employer/job-applications?${queryString}`);
+  }
+
+  async updateApplicationStatus(applicationId, statusData) {
+    return this.request(`/applications/${applicationId}/status`, {
       method: 'PUT',
-      body: profileData,
+      body: statusData,
     });
+  }
+
+  async getApplicationStatistics() {
+    return this.request('/applications/employer/statistics');
+  }
+
+  async withdrawApplication(applicationId) {
+    return this.request(`/applications/${applicationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ========== USER METHODS ==========
+  async getUserProfile(userId = null) {
+    const endpoint = userId ? `/users/profile/${userId}` : '/users/profile';
+    return this.request(endpoint);
+  }
+
+  async uploadAvatar(formData) {
+    // Note: This requires special handling for file upload
+    const url = `${API_BASE_URL}/users/upload-avatar`;
+    const config = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+      },
+      body: formData,
+    };
+
+    const response = await fetch(url, config);
+    return response.json();
+  }
+
+  async uploadResume(formData) {
+    const url = `${API_BASE_URL}/users/upload-resume`;
+    const config = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+      },
+      body: formData,
+    };
+
+    const response = await fetch(url, config);
+    return response.json();
   }
 
   async getSavedJobs() {
@@ -126,6 +231,53 @@ class ApiService {
     return this.request(`/users/saved-jobs/${jobId}`, {
       method: 'POST',
     });
+  }
+
+  async removeSavedJob(jobId) {
+    return this.request(`/users/saved-jobs/${jobId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRecommendedJobs() {
+    return this.request('/users/recommended-jobs');
+  }
+
+  // ========== COMPANY METHODS ==========
+  async getCompanyProfile(companyId) {
+    return this.request(`/companies/${companyId}`);
+  }
+
+  async updateCompanyProfile(companyId, companyData) {
+    return this.request(`/companies/${companyId}`, {
+      method: 'PUT',
+      body: companyData,
+    });
+  }
+
+  // ========== UTILITY METHODS ==========
+  async healthCheck() {
+    return this.request('/health');
+  }
+
+  // Check if user is authenticated
+  isAuthenticated() {
+    return !!this.token;
+  }
+
+  // Check if user is employer
+  isEmployer() {
+    return this.currentUser?.userType === 'employer';
+  }
+
+  // Check if user is student
+  isStudent() {
+    return this.currentUser?.userType === 'student';
+  }
+
+  // Get current user data
+  getCurrentUserData() {
+    return this.currentUser;
   }
 }
 
