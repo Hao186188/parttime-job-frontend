@@ -221,7 +221,7 @@ function Home() {
                 <a href="https://facebook.com/share/17PfiN1Xrk/" target="_blank" rel="noopener noreferrer">
                   Facebook
                 </a>
-                <a href="https://zalo.me/0788984741" target="_blank" rel="noopener noreferrer">
+                <a href="https://zalo.me/0924091201" target="_blank" rel="noopener noreferrer">
                   Zalo
                 </a>
                 <a href="mailto:contact@parttimejob.com">Email</a>
